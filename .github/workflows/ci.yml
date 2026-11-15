@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    paths-ignore: ["dataset/**"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Unit tests
+        run: pytest -q tests
+      - name: Build fake data
+        run: python backtest/make_sample_data.py
+      - name: dbt build (DuckDB, models + data tests)
+        working-directory: dbt
+        run: |
+          mkdir -p ~/.dbt && cp profiles.example.yml ~/.dbt/profiles.yml
+          dbt build --target local --vars '{prices_csv: ../data/sample_psx_daily.csv, stocks_csv: ../data/sample_psx_stocks.csv}'
+      - name: Backtest + daily post on fake data
+        run: |
+          python backtest/backtest.py --data data/sample_psx_daily.csv --stocks data/sample_psx_stocks.csv
+          python publish/daily_movers.py --data data/sample_psx_daily.csv

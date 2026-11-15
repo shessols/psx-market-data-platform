@@ -1,0 +1,15 @@
+version: 2
+sources:
+  - name: raw
+    schema: "{{ 'raw' if target.type == 'duckdb' else 'RAW' }}"
+    tables:
+      - name: daily_prices
+        description: One row per stock per trading day, loaded from PSX.
+        loaded_at_field: loaded_at
+        columns:
+          - name: symbol
+            tests: [not_null]
+          - name: date
+            tests: [not_null]
+      - name: stocks
+        description: Listed PSX stocks with name and sector.

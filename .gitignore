@@ -1,0 +1,12 @@
+data/
+!data/.gitkeep
+site/
+__pycache__/
+.env
+*.duckdb
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+logs/
+.pytest_cache/
+tests/_tmp_prices.csv

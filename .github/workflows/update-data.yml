@@ -1,0 +1,85 @@
+name: Update PSX data
+
+on:
+  schedule:
+    - cron: "0 13 * * 1-5"      # 18:00 Pakistan time, Monday to Friday
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "Download ALL history (first run)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write                # commit the dataset
+  pages: write                   # publish the website
+  id-token: write
+
+concurrency:
+  group: psx-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: pip install psxdata pandas numpy pyarrow pyyaml matplotlib
+
+      - name: Download PSX prices
+        run: |
+          if [ "${{ inputs.full }}" = "true" ] || [ ! -f dataset/metadata.json ]; then
+            python ingest/update_dataset.py --full
+          else
+            python ingest/update_dataset.py
+          fi
+
+      - name: Adjust for splits and bonus shares
+        run: python ingest/adjust_prices.py data/psx_daily.csv data/psx_daily_adj.csv
+
+      - name: Strategy research
+        run: |
+          python backtest/backtest.py --data data/psx_daily_adj.csv --stocks data/psx_stocks.csv
+          python backtest/research_monthly.py --data data/psx_daily_adj.csv
+
+      - name: Daily movers post
+        run: python publish/daily_movers.py --data data/psx_daily_adj.csv
+
+      - name: Build website
+        run: python publish/build_site.py
+
+      - name: Commit dataset
+        run: |
+          git config user.name "psx-data-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dataset
+          if git diff --cached --quiet; then
+            echo "No new data today"
+          else
+            git commit -m "data: PSX update $(python -c "import json;print(json.load(open('dataset/metadata.json'))['last_date'])")"
+            git push
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        if: ${{ !github.event.repository.private }}   # website only once the repo is public
+        with:
+          path: site
+
+  deploy:
+    needs: update
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

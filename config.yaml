@@ -1,0 +1,48 @@
+# Strategy and pipeline settings. Change numbers here, not in code.
+
+data:
+  start_date: "2024-01-01"      # how far back to pull history
+  raw_dir: "data/raw"            # one CSV per symbol (full pull only)
+  combined_file: "data/psx_daily.csv"
+  stocks_file: "data/psx_stocks.csv"   # symbol, name, sector
+  skip_etfs: true
+  skip_debt: true
+
+storage:
+  mode: "local"                  # local = load Snowflake from CSV; s3 = Python -> S3 -> Snowflake
+  s3_bucket: "your-psx-bucket"   # create in AWS, e.g. shessols-psx-data
+  s3_prefix: "psx"               # files land at s3://bucket/psx/prices/date=YYYY-MM-DD/
+  aws_region: "ap-south-1"       # Mumbai, closest to Karachi
+
+strategy:
+  amount_per_trade: 1000         # Rs per buy, every trading day
+  sides: [loser, gainer]         # loser = biggest % fall that day, gainer = biggest % rise
+  top_n: 1                       # buy the N biggest movers per side each day
+  window_days: 365               # main test: the last 365 days, rolling with the data
+  buy_at: "next_open"            # next_open (realistic) or same_close
+  min_price: 5                   # skip penny stocks below this price (Rs)
+  min_volume: 100000             # skip illiquid stocks (shares traded that day)
+  exit_modes: [hold, rules]      # hold = keep everything, value it today
+                                 # rules = sell on take profit / stop loss / max days
+  exit:
+    take_profit_pct: 5           # sell when up this much
+    stop_loss_pct: 10            # sell when down this much
+    max_hold_days: 10            # sell after this many trading days anyway
+  random_runs: 10                # random-pick benchmark repeats (fair comparison)
+
+fees:                            # CHECK THESE WITH YOUR BROKER
+  commission_pct: 0.15           # % of trade value, each side
+  commission_per_share_min: 0.03 # Rs per share minimum (whichever is higher)
+  other_charges_pct: 0.02        # CDC, SECP, exchange levies, each side
+  capital_gains_tax_pct: 15      # on net profit per trade
+
+snowflake:
+  database: PSX
+  schema_raw: RAW
+  schema_mart: MART
+  table_prices: DAILY_PRICES
+
+content:                         # daily "PSX Movers" post for channels
+  top_n: 5
+  out_dir: "data/posts"
+  brand: "Pintern Markets"       # footer on the chart image

@@ -1,0 +1,70 @@
+version: 2
+
+models:
+  - name: stg_prices
+    description: Cleaned daily OHLCV, one row per symbol per day.
+    tests:
+      - unique_combination: {arguments: {columns: [symbol, trade_date]}}
+    columns:
+      - name: symbol
+        tests: [not_null]
+      - name: trade_date
+        tests: [not_null]
+      - name: close_price
+        tests:
+          - value_between: {arguments: {min: 0.01, max: 100000}}
+
+  - name: stg_stocks
+    columns:
+      - name: symbol
+        tests: [unique, not_null]
+
+  - name: dim_stock
+    description: One row per stock with sector and trading history.
+    columns:
+      - name: symbol
+        tests: [unique, not_null]
+      - name: sector
+        tests: [not_null]
+
+  - name: fct_daily_prices
+    description: Daily prices with % change, gaps, 20-day averages and limit flags.
+    tests:
+      - unique_combination: {arguments: {columns: [symbol, trade_date]}}
+    columns:
+      - name: symbol
+        tests:
+          - relationships: {arguments: {to: ref('dim_stock'), field: symbol}}
+      - name: pct_change
+        description: Close vs previous close, in %. Big values usually mean a split or bonus, so this is a warning, not an error.
+        tests:
+          - value_between: {arguments: {min: -50, max: 50}, config: {severity: warn}}
+
+  - name: mart_daily_movers
+    description: Daily ranking of liquid stocks by % change (losers and gainers).
+    columns:
+      - name: loser_rank
+        tests: [not_null]
+
+  - name: mart_sector_daily
+    description: Sector performance per day.
+    tests:
+      - unique_combination: {arguments: {columns: [trade_date, sector]}}
+
+  - name: mart_market_breadth
+    description: Whole-market advancers vs decliners per day.
+    columns:
+      - name: trade_date
+        tests: [unique, not_null]
+
+  - name: mart_mover_forward_returns
+    description: What happened 1, 5, 10 and 21 trading days after a stock was the day's #1 loser or #1 gainer.
+    columns:
+      - name: side
+        tests:
+          - accepted_values: {arguments: {values: [loser, gainer]}}
+    tests:
+      - unique_combination: {arguments: {columns: [side, signal_date, symbol]}}
+
+  - name: mart_strategy_summary
+    description: Average forward returns per side and year (SQL view of the strategy).

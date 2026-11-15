@@ -1,0 +1,58 @@
+// ---------- Date table (Modeling > New table) ----------
+Dates =
+ADDCOLUMNS (
+    CALENDAR ( MIN ( fct_daily_prices[trade_date] ), MAX ( fct_daily_prices[trade_date] ) ),
+    "Year", YEAR ( [Date] ),
+    "Month", FORMAT ( [Date], "MMM yyyy" ),
+    "MonthNo", YEAR ( [Date] ) * 100 + MONTH ( [Date] ),
+    "Weekday", FORMAT ( [Date], "ddd" )
+)
+
+// ---------- Market measures (table: fct_daily_prices) ----------
+Stocks Traded = DISTINCTCOUNT ( fct_daily_prices[symbol] )
+Value Traded (Rs bn) = DIVIDE ( SUM ( fct_daily_prices[value_traded] ), 1e9 )
+Avg % Change = AVERAGE ( fct_daily_prices[pct_change] )
+Advancers = CALCULATE ( COUNTROWS ( fct_daily_prices ), fct_daily_prices[pct_change] > 0 )
+Decliners = CALCULATE ( COUNTROWS ( fct_daily_prices ), fct_daily_prices[pct_change] < 0 )
+Breadth Ratio = DIVIDE ( [Advancers], [Decliners] )
+Limit Down Count = CALCULATE ( COUNTROWS ( fct_daily_prices ), fct_daily_prices[is_limit_down] = TRUE () )
+
+Latest Close =
+VAR d = MAX ( fct_daily_prices[trade_date] )
+RETURN CALCULATE ( MAX ( fct_daily_prices[close_price] ), fct_daily_prices[trade_date] = d )
+
+Return % (period) =
+VAR firstD = MIN ( fct_daily_prices[trade_date] )
+VAR lastD  = MAX ( fct_daily_prices[trade_date] )
+VAR p0 = CALCULATE ( AVERAGE ( fct_daily_prices[close_price] ), fct_daily_prices[trade_date] = firstD )
+VAR p1 = CALCULATE ( AVERAGE ( fct_daily_prices[close_price] ), fct_daily_prices[trade_date] = lastD )
+RETURN DIVIDE ( p1 - p0, p0 )
+
+// ---------- Strategy measures (table: backtest_trades) ----------
+// Columns side (loser/gainer) and mode (hold/rules) keep strategies separate:
+// put side on the legend to compare, or remove it to see them merged.
+Trades = COUNTROWS ( backtest_trades )
+Win Rate = DIVIDE ( CALCULATE ( [Trades], backtest_trades[profit] > 0 ), [Trades] )
+Total Profit (Rs) = SUM ( backtest_trades[profit] )
+Fees + Tax (Rs) = SUM ( backtest_trades[fees] ) + SUM ( backtest_trades[tax] )
+Avg Return % = AVERAGE ( backtest_trades[return_pct] ) / 100
+Money Put In (Rs) = SUM ( backtest_trades[invested] )
+Final Value (Rs) = [Money Put In (Rs)] + [Total Profit (Rs)]
+Strategy Return % = DIVIDE ( [Total Profit (Rs)], [Money Put In (Rs)] )
+Loser Profit (Rs) = CALCULATE ( [Total Profit (Rs)], backtest_trades[side] = "loser" )
+Gainer Profit (Rs) = CALCULATE ( [Total Profit (Rs)], backtest_trades[side] = "gainer" )
+Loser minus Gainer (Rs) = [Loser Profit (Rs)] - [Gainer Profit (Rs)]
+Cumulative Profit (Rs) =
+CALCULATE (
+    [Total Profit (Rs)],
+    FILTER ( ALL ( backtest_trades[exit_date] ), backtest_trades[exit_date] <= MAX ( backtest_trades[exit_date] ) )
+)
+
+// ---------- Research (table: mart_mover_forward_returns) ----------
+Avg Next-Day Return % = AVERAGE ( mart_mover_forward_returns[fwd_ret_1d] ) / 100
+Avg 5-Day Return % = AVERAGE ( mart_mover_forward_returns[fwd_ret_5d] ) / 100
+// Use side as a slicer or legend for loser vs gainer
+Bounce Rate 5d = DIVIDE (
+    CALCULATE ( COUNTROWS ( mart_mover_forward_returns ), mart_mover_forward_returns[fwd_ret_5d] > 0 ),
+    COUNTROWS ( mart_mover_forward_returns )
+)
