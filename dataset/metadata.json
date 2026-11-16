@@ -1,9 +1,9 @@
 {
-  "last_updated_utc": "2026-11-15T09:56:04+00:00",
+  "last_updated_utc": "2026-11-16T11:35:50+00:00",
   "first_date": "2016-11-15",
-  "last_date": "2026-11-13",
-  "rows": 917810,
-  "symbols": 677,
+  "last_date": "2026-11-16",
+  "rows": 918291,
+  "symbols": 678,
   "failed_symbols": [],
   "source": "PSX Data Portal (dps.psx.com.pk) via the psxdata library",
   "note": "Raw, unadjusted prices. Use ingest/adjust_prices.py for split/bonus adjustment."
