@@ -1,8 +1,8 @@
 {
-  "last_updated_utc": "2026-11-17T21:56:00+00:00",
+  "last_updated_utc": "2026-11-19T21:32:26+00:00",
   "first_date": "2016-11-15",
-  "last_date": "2026-11-17",
-  "rows": 918767,
+  "last_date": "2026-11-19",
+  "rows": 919717,
   "symbols": 678,
   "failed_symbols": [],
   "source": "PSX Data Portal (dps.psx.com.pk) via the psxdata library",
