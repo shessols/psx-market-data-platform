@@ -58,8 +58,8 @@ jobs:
 
       - name: Commit dataset
         run: |
-          git config user.name "psx-data-bot"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "shessols"
+          git config user.email "130287190+shessols@users.noreply.github.com"
           git add dataset
           if git diff --cached --quiet; then
             echo "No new data today"
